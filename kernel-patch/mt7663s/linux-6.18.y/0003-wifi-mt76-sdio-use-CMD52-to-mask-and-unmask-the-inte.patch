@@ -1,0 +1,41 @@
+From cb498c3dea66fcdfe01c90d1639903988ead7e27 Mon Sep 17 00:00:00 2001
+From: Ryan Brue <ryanbrue.dev@gmail.com>
+Date: Mon, 2 Nov 2026 19:39:33 +0800
+Subject: [PATCH 3/4] wifi: mt76: sdio: use CMD52 to mask and unmask the
+ interrupt
+
+---
+ drivers/net/wireless/mediatek/mt76/sdio_txrx.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/wireless/mediatek/mt76/sdio_txrx.c b/drivers/net/wireless/mediatek/mt76/sdio_txrx.c
+index 3f314e8..311c31e 100644
+--- a/drivers/net/wireless/mediatek/mt76/sdio_txrx.c
++++ b/drivers/net/wireless/mediatek/mt76/sdio_txrx.c
+@@ -319,7 +319,7 @@ void mt76s_txrx_worker(struct mt76_sdio *sdio)
+ 
+ 	/* disable interrupt */
+ 	sdio_claim_host(sdio->func);
+-	sdio_writel(sdio->func, WHLPCR_INT_EN_CLR, MCR_WHLPCR, NULL);
++	sdio_writeb(sdio->func, WHLPCR_INT_EN_CLR, MCR_WHLPCR, NULL);
+ 	sdio_release_host(sdio->func);
+ 
+ 	do {
+@@ -351,7 +351,7 @@ void mt76s_txrx_worker(struct mt76_sdio *sdio)
+ 
+ 	/* enable interrupt */
+ 	sdio_claim_host(sdio->func);
+-	sdio_writel(sdio->func, WHLPCR_INT_EN_SET, MCR_WHLPCR, NULL);
++	sdio_writeb(sdio->func, WHLPCR_INT_EN_SET, MCR_WHLPCR, NULL);
+ 	sdio_release_host(sdio->func);
+ }
+ EXPORT_SYMBOL_GPL(mt76s_txrx_worker);
+@@ -365,7 +365,7 @@ void mt76s_sdio_irq(struct sdio_func *func)
+ 	    test_bit(MT76_MCU_RESET, &dev->phy.state))
+ 		return;
+ 
+-	sdio_writel(sdio->func, WHLPCR_INT_EN_CLR, MCR_WHLPCR, NULL);
++	sdio_writeb(sdio->func, WHLPCR_INT_EN_CLR, MCR_WHLPCR, NULL);
+ 	mt76_worker_schedule(&sdio->txrx_worker);
+ }
+ EXPORT_SYMBOL_GPL(mt76s_sdio_irq);

@@ -1,0 +1,27 @@
+From 1dd9dd007c2b229b7e6650825586b6ad961c6729 Mon Sep 17 00:00:00 2001
+From: Ryan Brue <ryanbrue.dev@gmail.com>
+Date: Mon, 2 Nov 2026 19:39:30 +0800
+Subject: [PATCH 1/4] wifi: mt76: mt7663s: don't advertise random MAC address
+ scans
+
+---
+ drivers/net/wireless/mediatek/mt76/mt7615/init.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/net/wireless/mediatek/mt76/mt7615/init.c b/drivers/net/wireless/mediatek/mt76/mt7615/init.c
+index e437e08..2ab785e 100644
+--- a/drivers/net/wireless/mediatek/mt76/mt7615/init.c
++++ b/drivers/net/wireless/mediatek/mt76/mt7615/init.c
+@@ -200,6 +200,12 @@ mt7615_check_offload_capability(struct mt7615_dev *dev)
+ 				   WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL |
+ 				   NL80211_FEATURE_P2P_GO_CTWIN |
+ 				   NL80211_FEATURE_P2P_GO_OPPPS;
++		/*
++		 * On SDIO the firmware ends a hw scan with a random source
++		 * address at once, with no results.
++		 */
++		if (mt76_is_sdio(&dev->mt76))
++			wiphy->features &= ~NL80211_FEATURE_SCAN_RANDOM_MAC_ADDR;
+ 	} else {
+ 		dev->ops->hw_scan = NULL;
+ 		dev->ops->cancel_hw_scan = NULL;

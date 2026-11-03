@@ -1,0 +1,50 @@
+From 749f750c9a75f080a00cdbb460739adf8d181991 Mon Sep 17 00:00:00 2001
+From: Ryan Brue <ryanbrue.dev@gmail.com>
+Date: Mon, 2 Nov 2026 19:39:32 +0800
+Subject: [PATCH 2/4] wifi: mt76: mt7615: wait while Bluetooth downloads the
+ MT7663 patch
+
+---
+ drivers/net/wireless/mediatek/mt76/mt7615/mcu.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/wireless/mediatek/mt76/mt7615/mcu.c b/drivers/net/wireless/mediatek/mt76/mt7615/mcu.c
+index ff57ede..89ce3ca 100644
+--- a/drivers/net/wireless/mediatek/mt76/mt7615/mcu.c
++++ b/drivers/net/wireless/mediatek/mt76/mt7615/mcu.c
+@@ -5,6 +5,7 @@
+  *         Ryder Lee <ryder.lee@mediatek.com>
+  */
+ 
++#include <linux/delay.h>
+ #include <linux/firmware.h>
+ #include "mt7615.h"
+ #include "mcu.h"
+@@ -1228,7 +1229,7 @@ static int mt7615_load_patch(struct mt7615_dev *dev, u32 addr, const char *name)
+ {
+ 	const struct mt7615_patch_hdr *hdr;
+ 	const struct firmware *fw = NULL;
+-	int len, ret, sem;
++	int i, len, ret, sem;
+ 
+ 	ret = firmware_request_nowarn(&fw, name, dev->mt76.dev);
+ 	if (ret)
+@@ -1240,7 +1241,17 @@ static int mt7615_load_patch(struct mt7615_dev *dev, u32 addr, const char *name)
+ 		goto release_fw;
+ 	}
+ 
+-	sem = mt76_connac_mcu_patch_sem_ctrl(&dev->mt76, true);
++	/*
++	 * On MT7663 the Bluetooth function shares the ROM patch, and the
++	 * semaphore is refused while it downloads the patch: wait for it.
++	 */
++	for (i = 0; i < 50; i++) {
++		sem = mt76_connac_mcu_patch_sem_ctrl(&dev->mt76, true);
++		if (sem != PATCH_NOT_DL_SEM_FAIL)
++			break;
++		msleep(100);
++	}
++
+ 	switch (sem) {
+ 	case PATCH_IS_DL:
+ 		goto release_fw;

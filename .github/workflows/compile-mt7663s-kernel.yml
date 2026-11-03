@@ -101,6 +101,16 @@ on:
         options:
           - kernel-config/release/stable
           - false
+      patch_dir:
+        description: "Patch directory (under kernel-patch/)"
+        required: false
+        default: "kernel-patch/mt7663s"
+        type: string
+      release_tag:
+        description: "Release tag for output packages"
+        required: false
+        default: "kernel_mt7663s"
+        type: string
 
 env:
   TZ: Etc/UTC
@@ -220,7 +230,7 @@ jobs:
           kernel_sign: ${{ inputs.kernel_sign }}
           kernel_config: ${{ inputs.kernel_config }}
           # ---- 自定义补丁：上游 [PATCH 0/4] wifi: mt76: mt7663s ----
-          kernel_patch: kernel-patch/mt7663s
+          kernel_patch: ${{ inputs.patch_dir }}
           auto_patch: true
           ccache_clear: ${{ inputs.ccache_clear }}
           docker_hostpath: /builder
@@ -230,7 +240,7 @@ jobs:
         uses: ophub/upload-to-releases@main
         if: ${{ env.PACKAGED_STATUS == 'success' && !cancelled() }}
         with:
-          tag: kernel_mt7663s
+          tag: ${{ inputs.release_tag }}
           artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/*
           allow_updates: true
           remove_artifacts: false

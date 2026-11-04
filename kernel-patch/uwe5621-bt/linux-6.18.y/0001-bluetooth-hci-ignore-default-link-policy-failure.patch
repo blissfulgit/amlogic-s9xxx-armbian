@@ -1,46 +1,37 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: blissfulgit <blissfulgit@users.noreply.github.com>
-Date: Wed, 4 Nov 2026 12:10:00 +0800
-Subject: [PATCH] Bluetooth: hci: do not abort init when the controller rejects
- the default link policy
+Date: Wed, 4 Nov 2026 13:45:00 +0800
+Subject: [PATCH] Bluetooth: hci: ignore default link policy rejection
 
-Some controllers, such as the Unisoc UWE5621/UWE5622 Wi-Fi + BT combo used
-on many Amlogic TV boxes, answer HCI_OP_WRITE_DEF_LINK_POLICY with
-"Invalid HCI Command Parameters" (0x12). hci_sync then fails the whole
-controller initialization and the adapter can never be brought up:
+The Unisoc UWE5621/UWE5622 Wi-Fi + BT combo used on many Amlogic TV boxes
+answers HCI_OP_WRITE_DEF_LINK_POLICY with "Invalid HCI Command Parameters"
+(0x12). hci_sync then fails the entire controller initialization and the
+adapter can never be brought up:
 
   Bluetooth: hci0: Opcode 0x080f failed: -22
   Can't init device hci0: Invalid argument (22)
 
-The controller is otherwise fully functional (it resets fine and reports a
-valid BD_ADDR), so log the failure and keep going instead of making the
-device permanently unusable.
+The controller is otherwise fine (reset succeeds, valid BD_ADDR is
+reported), so log the rejection and keep going.
 ---
  net/bluetooth/hci_sync.c | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-diff --git a/net/bluetooth/hci_sync.c b/net/bluetooth/hci_sync.c
-index 1111111..2222222 100644
 --- a/net/bluetooth/hci_sync.c
 +++ b/net/bluetooth/hci_sync.c
-@@ -4334,6 +4334,7 @@ static int hci_setup_link_policy_sync(struct hci_dev *hdev)
- {
- 	struct hci_cp_write_def_link_policy cp;
- 	u16 link_policy = 0;
-+	int err;
- 
- 	if (!(hdev->commands[5] & 0x10))
- 		return 0;
-@@ -4353,8 +4354,13 @@ static int hci_setup_link_policy_sync(struct hci_dev *hdev)
+@@ -4352,8 +4352,15 @@
  
  	cp.policy = cpu_to_le16(link_policy);
  
 -	return __hci_cmd_sync_status(hdev, HCI_OP_WRITE_DEF_LINK_POLICY,
 -				     sizeof(cp), &cp, HCI_CMD_TIMEOUT);
-+	err = __hci_cmd_sync_status(hdev, HCI_OP_WRITE_DEF_LINK_POLICY,
-+				    sizeof(cp), &cp, HCI_CMD_TIMEOUT);
-+	if (err)
-+		bt_dev_warn(hdev, "failed to set default link policy (%d)", err);
++	/* Some controllers (e.g. Unisoc UWE5621/UWE5622) reject this with
++	 * "Invalid HCI Command Parameters" and would otherwise abort the
++	 * whole controller init. They work fine without it.
++	 */
++	if (__hci_cmd_sync_status(hdev, HCI_OP_WRITE_DEF_LINK_POLICY,
++				  sizeof(cp), &cp, HCI_CMD_TIMEOUT) < 0)
++		bt_dev_warn(hdev, "controller rejected default link policy, ignoring");
 +
 +	return 0;
  }
